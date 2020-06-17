@@ -39,7 +39,7 @@ TowerResult = collections.namedtuple('TowerResult', ('inferred', 'almost',
 JoinedResult = collections.namedtuple('JoinedResult', ('summary', 'train_op',
                                                        'correct', 'almost'))
 Inferred = collections.namedtuple('Inferred',
-                                  ('logits', 'remakes'))
+                                  ('logits', 'remakes', 'routing'))
 
 
 class Model(object):

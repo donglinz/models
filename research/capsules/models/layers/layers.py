@@ -25,7 +25,7 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
-
+import tensorflow_probability as tfp
 from models.layers import variables
 
 
@@ -72,7 +72,7 @@ def _leaky_routing(logits, output_dim):
   return tf.split(leaky_routing, [1, output_dim], 2)[1]
 
 
-def _update_routing(votes, biases, logit_shape, num_dims, input_dim, output_dim,
+def _update_routing(votes, biases, logit_shape, num_dims, input_dim, output_dim, recons_label,
                     num_routing, leaky):
   """Sums over scaled votes and applies squash to compute the activations.
 
@@ -101,18 +101,18 @@ def _update_routing(votes, biases, logit_shape, num_dims, input_dim, output_dim,
     r_t_shape += [i + 4]
   votes_trans = tf.transpose(votes, votes_t_shape)
 
-  def _body(i, logits, activations):
+  def _body(i, logits):
     """Routing while loop."""
     # route: [batch, input_dim, output_dim, ...]
     if leaky:
       route = _leaky_routing(logits, output_dim)
     else:
-      route = tf.nn.softmax(logits, dim=2)
+      route = tf.nn.softmax(logits, dim=2)    
     preactivate_unrolled = route * votes_trans
     preact_trans = tf.transpose(preactivate_unrolled, r_t_shape)
     preactivate = tf.reduce_sum(preact_trans, axis=1) + biases
     activation = _squash(preactivate)
-    activations = activations.write(i, activation)
+    # activations = activations.write(i, activation)
     # distances: [batch, input_dim, output_dim]
     act_3d = tf.expand_dims(activation, 1)
     tile_shape = np.ones(num_dims, dtype=np.int32).tolist()
@@ -120,25 +120,65 @@ def _update_routing(votes, biases, logit_shape, num_dims, input_dim, output_dim,
     act_replicated = tf.tile(act_3d, tile_shape)
     distances = tf.reduce_sum(votes * act_replicated, axis=3)
     logits += distances
-    return (i + 1, logits, activations)
+    return (i + 1, logits)
 
-  activations = tf.TensorArray(
-      dtype=tf.float32, size=num_routing, clear_after_read=False)
-  logits = tf.fill(logit_shape, 0.0)
-  i = tf.constant(0, dtype=tf.int32)
-  _, logits, activations = tf.while_loop(
-      lambda i, logits, activations: i < num_routing,
-      _body,
-      loop_vars=[i, logits, activations],
-      swap_memory=True)
+  logits = tf.stop_gradient(tf.get_variable("routing_logits", logit_shape, initializer = tf.zeros_initializer))
+  tf.summary.histogram("routing_logits", logits)
 
-  return activations.read(num_routing - 1)
+  if leaky:
+    route = _leaky_routing(logits, output_dim)
+  else:
+    route = tf.nn.softmax(logits, dim=2)    
+  preactivate_unrolled = route * votes_trans
+  preact_trans = tf.transpose(preactivate_unrolled, r_t_shape)
+  preactivate = tf.reduce_sum(preact_trans, axis=1) + biases
+  activation = _squash(preactivate)
+  
+  with tf.name_scope("Update Logits"):
+    logits_zeros = tf.fill(logit_shape, 0.0)
+    i = tf.constant(0, dtype=tf.int32)
+    _, logits_add = tf.while_loop(
+        lambda i, logits_zeros: i < num_routing,
+        _body,
+        loop_vars=[i, logits_zeros],
+        swap_memory=True)
+    logits = logits * 0.99 + logits_add * 0.1
+
+  # if num_routing != 1:
+  #   coefficients = _leaky_routing(logits, output_dim)
+  #   tf.summary.histogram("RoutingCoefficients", tf.math.log(0.1 + coefficients))
+  #   tf.summary.histogram("routing logits", tf.log(tf.math.exp(logits)))
+  #   tf.summary.histogram("routing logits sum", tf.log(tf.reduce_sum(tf.math.exp(logits), axis = 2)))
+
+  #   capsule_to_profile = []
+  #   for x in range(0, 1000, 300):
+  #     for y in range(0, 5):
+  #       capsule_to_profile.append(x + y)
+
+  #   coefficients_mean = tf.reduce_mean(coefficients, axis=0)
+  #   for i in capsule_to_profile:
+  #     for j in range(0, 10):
+  #       tf.summary.scalar("alllabelcapsule{0}class{1}".format(i, j), coefficients_mean[i][j])
+    
+  #   for label in range(0, 10):
+  #     mask = tf.one_hot(recons_label, 10)[:, label]
+  #     count = tf.reduce_sum(mask)
+  #     count = tf.cond(tf.math.equal(count, tf.zeros([])), lambda : tf.ones([]), lambda : count)
+
+  #     coefficients_masked = tf.transpose(coefficients, [1,2,0]) * mask
+  #     mean = tf.reduce_sum(coefficients_masked, axis=2) / count
+  #     for i in capsule_to_profile:
+  #       for j in range(0, 10):
+  #         tf.summary.scalar("capsule{0}class{1}label{2}".format(i, j, label), mean[i][j])
+
+  return activation, logits
 
 
 def capsule(input_tensor,
             input_dim,
             output_dim,
             layer_name,
+            recons_label,
             input_atoms=8,
             output_atoms=8,
             **routing_args):
@@ -173,8 +213,8 @@ def capsule(input_tensor,
   with tf.variable_scope(layer_name):
     # weights variable will hold the state of the weights for the layer
     weights = variables.weight_variable(
-        [input_dim, input_atoms, output_dim * output_atoms])
-    biases = variables.bias_variable([output_dim, output_atoms])
+        [input_dim, input_atoms, output_dim * output_atoms], verbose=True)
+    biases = variables.bias_variable([output_dim, output_atoms], verbose=True)
     with tf.name_scope('Wx_plus_b'):
       # Depthwise matmul: [b, d, c] ** [d, c, o_c] = [b, d, o_c]
       # To do this: tile input, do element-wise multiplication and reduce
@@ -185,18 +225,20 @@ def capsule(input_tensor,
       votes = tf.reduce_sum(input_tiled * weights, axis=2)
       votes_reshaped = tf.reshape(votes,
                                   [-1, input_dim, output_dim, output_atoms])
+      tf.summary.histogram("U_hat distribution", votes_reshaped)
     with tf.name_scope('routing'):
       input_shape = tf.shape(input_tensor)
       logit_shape = tf.stack([input_shape[0], input_dim, output_dim])
-      activations = _update_routing(
+      activations, get_routing_logits = _update_routing(
           votes=votes_reshaped,
           biases=biases,
           logit_shape=logit_shape,
           num_dims=4,
           input_dim=input_dim,
           output_dim=output_dim,
+          recons_label=recons_label,
           **routing_args)
-    return activations
+    return activations, get_routing_logits
 
 
 def _depthwise_conv3d(input_tensor,
@@ -251,6 +293,18 @@ def _depthwise_conv3d(input_tensor,
         [1, 1, stride, stride],
         padding=padding,
         data_format='NCHW')
+    # input_tensor_reshaped = tf.transpose(tf.reshape(input_tensor, [
+    #     input_shape[0] * input_dim, input_atoms, input_shape[3], input_shape[4]
+    # ]), [0, 2, 3, 1])
+    # input_tensor_reshaped.set_shape((None, in_height.value,
+    #                                  in_width.value, input_atoms))
+
+    # conv = tf.transpose(tf.nn.conv2d(
+    #     input_tensor_reshaped,
+    #     kernel,
+    #     [1, stride, stride, 1],
+    #     padding=padding,
+    #     data_format='NHWC'), [0, 3, 1, 2])
     conv_shape = tf.shape(conv)
     _, _, conv_height, conv_width = conv.get_shape()
     # Reshape back to 6D by splitting first dimmension to batch and input_dim
@@ -262,6 +316,8 @@ def _depthwise_conv3d(input_tensor,
     ])
     conv_reshaped.set_shape((None, input_dim, output_dim, output_atoms,
                              conv_height.value, conv_width.value))
+    
+    tf.summary.histogram("activation", conv_reshaped)
     return conv_reshaped, conv_shape, input_shape
 
 
@@ -315,8 +371,8 @@ def conv_slim_capsule(input_tensor,
   with tf.variable_scope(layer_name):
     kernel = variables.weight_variable(shape=[
         kernel_size, kernel_size, input_atoms, output_dim * output_atoms
-    ])
-    biases = variables.bias_variable([output_dim, output_atoms, 1, 1])
+    ], verbose=True)
+    biases = variables.bias_variable([output_dim, output_atoms, 1, 1], verbose=True)
     votes, votes_shape, input_shape = _depthwise_conv3d(
         input_tensor, kernel, input_dim, output_dim, input_atoms, output_atoms,
         stride, padding)
@@ -327,13 +383,14 @@ def conv_slim_capsule(input_tensor,
       ])
       biases_replicated = tf.tile(biases,
                                   [1, 1, votes_shape[2], votes_shape[3]])
-      activations = _update_routing(
+      activations, _ = _update_routing(
           votes=votes,
           biases=biases_replicated,
           logit_shape=logit_shape,
           num_dims=6,
           input_dim=input_dim,
           output_dim=output_dim,
+          recons_label={},
           **routing_args)
     return activations
 

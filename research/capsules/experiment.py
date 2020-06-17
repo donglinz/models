@@ -33,6 +33,9 @@ from input_data.affnist import affnist_input
 from input_data.norb import norb_input_record
 from models import capsule_model
 from models import conv_model
+from tensorboard import summary as summary_lib
+from tensorboard.plugins.custom_scalar import layout_pb2
+import itertools
 
 FLAGS = tf.flags.FLAGS
 
@@ -122,10 +125,9 @@ def get_features(split, total_batch_size, num_gpus, data_dir, num_targets,
                 data_dir=data_dir, batch_size=batch_size, split=split,
             ))
       elif dataset == 'cifar10':
-        data_dir = os.path.join(data_dir, 'cifar-10-batches-bin')
         features.append(
             cifar10_input.inputs(
-                split=split, data_dir=data_dir, batch_size=batch_size))
+                split=split, data_dir=os.path.join(data_dir, 'cifar-10-batches-bin'), batch_size=batch_size))
       else:
         raise ValueError(
             'Unexpected dataset {!r}, must be mnist, norb, or cifar10.'.format(
@@ -178,7 +180,7 @@ def load_training(saver, session, load_dir):
 
 
 def train_experiment(session, result, writer, last_step, max_steps, saver,
-                     summary_dir, save_step):
+                     summary_dir, save_step, inferred):
   """Runs training for up to max_steps and saves the model and summaries.
 
   Args:
@@ -191,11 +193,40 @@ def train_experiment(session, result, writer, last_step, max_steps, saver,
     summary_dir: The directory to save the model in it.
     save_step: How often to save the model ckpt.
   """
+  # capsule_to_profile = []
+  # for x in range(0, 1000, 300):
+  #   for y in range(0, 5):
+  #     capsule_to_profile.append(x + y)
+
+  # layout_summary = summary_lib.custom_scalar_pb(
+  #   layout_pb2.Layout(category=[
+  #       layout_pb2.Category(
+  #           title='Capsules Routing Coefficients',
+  #           chart=list(map(lambda x: layout_pb2.Chart(
+  #                   title='capsule{0}'.format(x),
+  #                   multiline=layout_pb2.MultilineChartContent(tag=
+  #                   list(map(lambda y, x=x: 'tower_0/capsule2/routing/alllabelcapsule{0}class{1}'.format(x, y), range(0, 10)))
+  #                   )), capsule_to_profile)) +
+  #                 list(map(lambda x: layout_pb2.Chart(
+  #                   title='capsule{0}label{1}'.format(x[0], x[1]),
+  #                   multiline=layout_pb2.MultilineChartContent(tag=
+  #                   list(map(lambda y, x=x: 'tower_0/capsule2/routing/capsule{0}class{1}label{2}'.format(x[0], y, x[1]), range(0, 10)))
+  #                 )),itertools.product(capsule_to_profile, range(0, 10))))
+  #         )]))
+
+  # writer.add_summary(layout_summary)
+
   step = 0
   for i in range(last_step, max_steps):
     step += 1
-    summary, _ = session.run([result.summary, result.train_op])
-    writer.add_summary(summary, i)
+    if step % 100 == 1:
+      summary, _, _ = session.run([result.summary, result.train_op, inferred.routing])
+      writer.add_summary(summary, i)
+    elif step % 10 == 1:
+      _, _ = session.run([result.train_op, inferred.routing])
+    else:
+      session.run([result.train_op])
+
     if (i + 1) % save_step == 0:
       saver.save(
           session, os.path.join(summary_dir, 'model.ckpt'), global_step=i + 1)
@@ -232,27 +263,27 @@ def eval_experiment(session, result, writer, last_step, max_steps, **kwargs):
     **kwargs: Arguments passed by run_experiment but not used in this function.
   """
   del kwargs
-
+  
   total_correct = 0
   total_almost = 0
-  for _ in range(max_steps):
+  for step in range(max_steps):
     summary_i, correct, almost = session.run(
         [result.summary, result.correct, result.almost])
     total_correct += correct
     total_almost += almost
 
-  total_false = max_steps * 100 - total_correct
-  total_almost_false = max_steps * 100 - total_almost
-  summary = tf.Summary.FromString(summary_i)
-  summary.value.add(tag='correct_prediction', simple_value=total_correct)
-  summary.value.add(tag='wrong_prediction', simple_value=total_false)
-  summary.value.add(
-      tag='almost_wrong_prediction', simple_value=total_almost_false)
+    total_false = (step + 1) * 100 - total_correct
+    total_almost_false = (step + 1) * 100 - total_almost
+    summary = tf.Summary.FromString(summary_i)
+    summary.value.add(tag='correct_prediction', simple_value=total_correct)
+    summary.value.add(tag='wrong_prediction', simple_value=total_false)
+    summary.value.add(tag='almost_wrong_prediction', simple_value=total_almost_false)
+    writer.add_summary(summary, step)
+
   print('Total wrong predictions: {}, wrong percent: {}%'.format(
       total_false, total_false / max_steps))
   tf.logging.info('Total wrong predictions: {}, wrong percent: {}%'.format(
       total_false, total_false / max_steps))
-  writer.add_summary(summary, last_step)
 
 
 def run_experiment(loader,
@@ -261,7 +292,8 @@ def run_experiment(loader,
                    experiment,
                    result,
                    max_steps,
-                   save_step=0):
+                   save_step=0,
+                   inferred=None):
   """Starts a session, loads the model and runs the given experiment on it.
 
   This is a general wrapper to load a saved model and run an experiment on it.
@@ -291,6 +323,7 @@ def run_experiment(loader,
   last_step = loader(saver, session, load_dir)
   coord = tf.train.Coordinator()
   threads = tf.train.start_queue_runners(sess=session, coord=coord)
+  writer.add_graph(session.graph)
   try:
     experiment(
         session=session,
@@ -300,7 +333,8 @@ def run_experiment(loader,
         max_steps=max_steps,
         saver=saver,
         summary_dir=load_dir,
-        save_step=save_step)
+        save_step=save_step,
+        inferred=inferred)
   except tf.errors.OutOfRangeError:
     tf.logging.info('Finished experiment.')
   finally:
@@ -337,7 +371,7 @@ def train(hparams, summary_dir, num_gpus, model_type, max_steps, save_step,
     features = get_features('train', 128, num_gpus, data_dir, num_targets,
                             dataset, validate)
     model = models[model_type](hparams)
-    result, _ = model.multi_gpu(features, num_gpus)
+    result, inferred = model.multi_gpu(features, num_gpus)
     # Print stats
     param_stats = tf.contrib.tfprof.model_analyzer.print_model_analysis(
         tf.get_default_graph(),
@@ -346,7 +380,7 @@ def train(hparams, summary_dir, num_gpus, model_type, max_steps, save_step,
     sys.stdout.write('total_params: %d\n' % param_stats.total_parameters)
     writer = tf.summary.FileWriter(summary_dir)
     run_experiment(load_training, summary_dir, writer, train_experiment, result,
-                   max_steps, save_step)
+                   max_steps, save_step, inferred)
     writer.close()
 
 
