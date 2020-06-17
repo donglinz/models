@@ -220,10 +220,10 @@ def train_experiment(session, result, writer, last_step, max_steps, saver,
   for i in range(last_step, max_steps):
     step += 1
     if step % 100 == 1:
-      summary, _, _ = session.run([result.summary, result.train_op, inferred.routing])
+      summary, _, _ = session.run([result.summary, result.train_op, inferred[0].routing])
       writer.add_summary(summary, i)
     elif step % 10 == 1:
-      _, _ = session.run([result.train_op, inferred.routing])
+      _, _ = session.run([result.train_op, inferred[0].routing])
     else:
       session.run([result.train_op])
 
