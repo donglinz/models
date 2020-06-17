@@ -33,7 +33,7 @@ class CapsuleModel(model.Model):
   layer.
   """
 
-  def _build_capsule(self, input_tensor, num_classes):
+  def _build_capsule(self, input_tensor, num_classes, recons_label):
     """Adds the capsule layers.
 
     A slim convolutional capsule layer transforms the input tensor to capsule
@@ -73,6 +73,7 @@ class CapsuleModel(model.Model):
         input_dim=input_dim,
         output_dim=num_classes,
         layer_name='capsule2',
+        recons_label = recons_label,
         input_atoms=8,
         output_atoms=16,
         num_routing=self._hparams.routing,
@@ -187,6 +188,21 @@ class CapsuleModel(model.Model):
           kernel, [1, 1, 1, 1],
           padding=self._hparams.padding,
           data_format='NCHW')
+
+    # image_4d_t = tf.reshape(image, [-1, image_depth, image_dim, image_dim])
+    # image_4d = tf.transpose(image_4d_t, [0, 2, 3, 1])
+
+    # # ReLU Convolution
+    # with tf.variable_scope('conv1') as scope:
+    #   kernel = variables.weight_variable(
+    #       shape=[9, 9, image_depth, 256], stddev=5e-2,
+    #       verbose=self._hparams.verbose)
+    #   biases = variables.bias_variable([256], verbose=self._hparams.verbose)
+    #   conv1 = tf.transpose(tf.nn.conv2d(
+    #       image_4d,
+    #       kernel, [1, 1, 1, 1],
+    #       padding=self._hparams.padding,
+    #       data_format='NHWC'), [0, 3, 1, 2])
       pre_activation = tf.nn.bias_add(conv1, biases, data_format='NCHW')
       relu1 = tf.nn.relu(pre_activation, name=scope.name)
       if self._hparams.verbose:
@@ -194,7 +210,7 @@ class CapsuleModel(model.Model):
     hidden1 = tf.expand_dims(relu1, 1)
 
     # Capsules
-    capsule_output = self._build_capsule(hidden1, features['num_classes'])
+    capsule_output, get_rouiting_logits = self._build_capsule(hidden1, features['num_classes'], features['recons_label'])
     logits = tf.norm(capsule_output, axis=-1)
 
     # Reconstruction
@@ -203,4 +219,4 @@ class CapsuleModel(model.Model):
     else:
       remake = None
 
-    return model.Inferred(logits, remake)
+    return model.Inferred(logits, remake, get_rouiting_logits)
