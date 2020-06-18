@@ -32,7 +32,7 @@
                 "--hparams_override=num_prime_capsules=64,padding=SAME,leaky=true,remake=false,verbose=True",
                 "--summary_dir=summary/"],
             "env": {
-                "CUDA_VISIBLE_DEVICES": ""
+                "CUDA_VISIBLE_DEVICES": "1"
             }
         },
         {
