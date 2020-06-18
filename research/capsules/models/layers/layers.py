@@ -25,7 +25,6 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
-import tensorflow_probability as tfp
 from models.layers import variables
 
 
@@ -122,11 +121,14 @@ def _update_routing(votes, biases, logit_shape, num_dims, input_dim, output_dim,
     logits += distances
     return (i + 1, logits)
 
-  logits_variable = tf.get_variable("routing_logits", logit_shape, initializer = tf.zeros_initializer)
-  t = [1 for x in range(len(logits_variable.shape))]
+  with tf.variable_scope("routing_b"):
+    logits_variable = tf.get_variable("routing_logits", logit_shape, initializer = tf.zeros_initializer)
+    
+  logits_no_gradient = tf.stop_gradient(logits_variable)
+  t = [1 for x in range(len(logits_no_gradient.shape))]
   t[0] = votes.shape[0]
-  logits = tf.tile(logits_variable, t)
-  tf.summary.histogram("routing_logits", logits_variable)
+  logits = tf.tile(logits_no_gradient, t)
+  tf.summary.histogram("routing_logits", logits_no_gradient)
 
   if leaky:
     route = _leaky_routing(logits, output_dim)
@@ -147,7 +149,7 @@ def _update_routing(votes, biases, logit_shape, num_dims, input_dim, output_dim,
         loop_vars=[i, logits_zeros],
         swap_memory=True)
     logits_add = tf.reduce_mean(logits_add, axis=0, keepdims=True)
-    logits_variable = logits_variable * 0.99 + logits_add * 0.01
+    logits_variable_assign = logits_variable.assign(logits_variable * 0.99 + logits_add * 0.01)
 
   # if num_routing != 1:
   #   coefficients = _leaky_routing(logits, output_dim)
@@ -176,7 +178,7 @@ def _update_routing(votes, biases, logit_shape, num_dims, input_dim, output_dim,
   #       for j in range(0, 10):
   #         tf.summary.scalar("capsule{0}class{1}label{2}".format(i, j, label), mean[i][j])
 
-  return activation, logits
+  return activation, logits_variable_assign
 
 
 def capsule(input_tensor,

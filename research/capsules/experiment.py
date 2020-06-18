@@ -219,6 +219,7 @@ def train_experiment(session, result, writer, last_step, max_steps, saver,
   step = 0
   for i in range(last_step, max_steps):
     step += 1
+    #run_options = tf.RunOptions(report_tensor_allocations_upon_oom = True)
     if step % 100 == 1:
       summary, _, _ = session.run([result.summary, result.train_op, inferred[0].routing])
       writer.add_summary(summary, i)
