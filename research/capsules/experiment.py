@@ -266,7 +266,9 @@ def run_experiment(loader,
     max_steps: Maximum number of experiment iterations.
     save_step: How often the training model should be saved.
   """
-  session = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+  sess_config = tf.ConfigProto(allow_soft_placement=True)
+  sess_config.gpu_options.allow_growth = True
+  session = tf.Session(config=sess_config)
   init_op = tf.group(tf.global_variables_initializer(),
                      tf.local_variables_initializer())
   session.run(init_op)
