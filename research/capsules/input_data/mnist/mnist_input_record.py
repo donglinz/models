@@ -198,7 +198,7 @@ def inputs(data_dir,
     else:
       file_format = '{}_{}shifted_mnist.tfrecords'
     if split == 'train':
-      shift = 2
+      shift = 6
     else:
       shift = 0
     filenames = [os.path.join(data_dir, file_format.format(split, shift))]

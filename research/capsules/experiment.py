@@ -29,6 +29,7 @@ import tensorflow as tf
 
 from input_data.cifar10 import cifar10_input
 from input_data.mnist import mnist_input_record
+from input_data.affnist import affnist_input
 from input_data.norb import norb_input_record
 from models import capsule_model
 from models import conv_model
@@ -101,6 +102,20 @@ def get_features(split, total_batch_size, num_gpus, data_dir, num_targets,
                 num_targets=num_targets,
                 validate=validate,
             ))
+      elif dataset == 'affnist':
+        if split == 'train':
+          features.append(
+            mnist_input_record.inputs(
+                data_dir=data_dir,
+                batch_size=batch_size,
+                split=split,
+                num_targets=num_targets,
+                height=40,
+            ))
+        elif split == 'test':
+          features.append(
+              affnist_input.read_affnist(split=split, batch_size=batch_size, path=data_dir)
+          )
       elif dataset == 'norb':
         features.append(
             norb_input_record.inputs(

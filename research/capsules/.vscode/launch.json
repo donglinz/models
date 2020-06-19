@@ -71,9 +71,26 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["--data_dir=/home/donglinz/workspace/models/research/capsules/testdata/mnist",
+            "args": ["--data_dir=/home/donglinz/datasets/mnist_data",
                 "--max_steps=300000",
-                "--summary_dir=summary/"]
+                "--summary_dir=summary/"],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "1"
+            }
+        },
+        {
+            "name": "affnist training",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": ["--data_dir=/home/donglinz/datasets/mnist_random_placed",
+                "--dataset=affnist",
+                "--max_steps=300000",
+                "--summary_dir=summary/"],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "1"
+            }
         },
         {
             "name": "mnist inference",
@@ -81,12 +98,12 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["--data_dir=/home/donglinz/workspace/models/research/capsules/testdata/mnist",
+            "args": ["--data_dir=/home/donglinz/datasets/mnist_data",
                 "--train=false",
-                "--checkpoint=/home/donglinz/workspace/models/research/capsules/summary/train/mnist/train/model.ckpt-30000",
-                "--summary_dir=summary/mnist"],
+                "--checkpoint=/home/donglinz/models/research/capsules/summary/train/model.ckpt-1500",
+                "--summary_dir=summary/"],
             "env": {
-                "CUDA_VISIBLE_DEVICES": ""
+                "CUDA_VISIBLE_DEVICES": "1"
             }
         }
     ]
