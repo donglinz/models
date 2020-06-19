@@ -89,7 +89,22 @@
                 "--max_steps=300000",
                 "--summary_dir=summary/"],
             "env": {
-                "CUDA_VISIBLE_DEVICES": "1"
+                "CUDA_VISIBLE_DEVICES": "0"
+            }
+        },
+        {
+            "name": "affnist inference",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": ["--data_dir=/home/donglinz/datasets/affnist",
+                "--dataset=affnist",
+                "--train=false",
+                "--checkpoint=/home/donglinz/workspace/models/research/capsules/summary/train/model.ckpt-3000",
+                "--summary_dir=summary/"],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0"
             }
         },
         {

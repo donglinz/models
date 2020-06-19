@@ -58,14 +58,15 @@ def read_affnist(split, batch_size, path):
   elif split == "test":
     X = tf.convert_to_tensor(testX, dtype=tf.float32) / 255.
     Y = tf.convert_to_tensor(testY_one_hot, dtype=tf.float32)
+    Y_label = tf.convert_to_tensor(testY, dtype=tf.int32)
   else:
     raise Exception("not implemented.")
 
-  input_queue = tf.train.slice_input_producer([X, Y],shuffle=True)
+  input_queue = tf.train.slice_input_producer([X, Y, Y_label],shuffle=True)
   images = tf.image.resize_images(input_queue[0] ,[40, 40])
   labels = input_queue[1]
 
-  X, Y = tf.train.batch([images, labels],
+  X, Y, Y_label_batched = tf.train.batch([images, labels, input_queue[2]],
 						  batch_size=batch_size
 						  )
   
@@ -77,5 +78,5 @@ def read_affnist(split, batch_size, path):
   batched_features['images'] = tf.transpose(X, [0, 3, 1, 2])
   batched_features['labels'] = Y
   batched_features['recons_image'] = tf.transpose(X, [0, 3, 1, 2])
-  batched_features['recons_label'] = testY
+  batched_features['recons_label'] = Y_label_batched
   return batched_features
