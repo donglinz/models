@@ -1,0 +1,76 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Cifar10 inference",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": ["--data_dir=/home/donglinz/datasets/",
+                "--train=false",
+                "--dataset=cifar10",
+                "--hparams_override=num_prime_capsules=64,padding=SAME,leaky=true,remake=false,routing=3,verbose=True",
+                "--summary_dir=summary/",
+                "--checkpoint=/home/donglinz/workspace/models/research/capsules/summary/cifarcheckpoint/model.ckpt-760000"],
+                "env": {
+                    "CUDA_VISIBLE_DEVICES": "1"
+                }
+        },
+        {
+            "name": "Cifar10 training",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console" :"integratedTerminal",
+            "args": ["--data_dir=/home/donglinz/datasets/",
+                "--dataset=cifar10",
+                "--max_steps=600000",
+                "--hparams_override=num_prime_capsules=64,padding=SAME,leaky=true,remake=false,verbose=True",
+                "--summary_dir=summary/"],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "1"
+            }
+        },
+        {
+            "name": "smallNorb training",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": ["--data_dir=/home/donglinz/models/research/capsules/testdata/norb",
+                "--dataset=cifar10",
+                "--max_steps=300000",
+                "--summary_dir=summary/"],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "1"
+            }
+        },
+        {
+            "name": "mnist training",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": ["--data_dir=/home/donglinz/workspace/models/research/capsules/testdata/mnist",
+                "--max_steps=300000",
+                "--summary_dir=summary/"]
+        },
+        {
+            "name": "mnist inference",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": ["--data_dir=/home/donglinz/workspace/models/research/capsules/testdata/mnist",
+                "--checkpoint=/home/donglinz/workspace/models/research/capsules/summary/train/mnist/train/model.ckpt-30000",
+                "--summary_dir=summary/mnist"],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": ""
+            }
+        }
+    ]
+}
