@@ -92,3 +92,4 @@ ENV/
 .idea/
 
 research/capsules/summary/
+research/capsules/logs
