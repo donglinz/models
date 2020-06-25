@@ -39,13 +39,13 @@ def weight_variable(shape, stddev=0.1, verbose=False):
   """
   with tf.device('/cpu:0'):
     with tf.name_scope('weights'):
-      weights = tf.get_variable(
+      weights = tf.compat.v1.get_variable(
           'weights',
           shape,
-          initializer=tf.truncated_normal_initializer(
+          initializer=tf.compat.v1.truncated_normal_initializer(
               stddev=stddev, dtype=tf.float32),
           dtype=tf.float32)
-  variable_summaries(weights, verbose)
+  #variable_summaries(weights, verbose)
   return weights
 
 
@@ -61,12 +61,12 @@ def bias_variable(shape, verbose=False):
   """
   with tf.device('/cpu:0'):
     with tf.name_scope('biases'):
-      biases = tf.get_variable(
+      biases = tf.compat.v1.get_variable(
           'biases',
           shape,
-          initializer=tf.constant_initializer(0.1),
+          initializer=tf.compat.v1.constant_initializer(0.1),
           dtype=tf.float32)
-  variable_summaries(biases, verbose)
+  #variable_summaries(biases, verbose)
   return biases
 
 

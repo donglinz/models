@@ -42,7 +42,7 @@ def _squash(input_tensor):
     A tensor with same shape as input (rank 3) for output of this layer.
   """
   with tf.name_scope('norm_non_linearity'):
-    norm = tf.norm(input_tensor, axis=2, keep_dims=True)
+    norm = tf.norm(input_tensor, axis=2, keepdims=True)
     norm_squared = norm * norm
     return (input_tensor / norm) * (norm_squared / (1 + norm_squared))
 
@@ -65,10 +65,10 @@ def _leaky_routing(logits, output_dim):
 
   # leak is a zero matrix with same shape as logits except dim(2) = 1 because
   # of the reduce_sum.
-  leak = tf.zeros_like(logits, optimize=True)
-  leak = tf.reduce_sum(leak, axis=2, keep_dims=True)
+  leak = tf.compat.v1.zeros_like(logits, optimize=True)
+  leak = tf.compat.v1.reduce_sum(leak, axis=2, keep_dims=True)
   leaky_logits = tf.concat([leak, logits], axis=2)
-  leaky_routing = tf.nn.softmax(leaky_logits, dim=2)
+  leaky_routing = tf.nn.softmax(leaky_logits, axis=2)
   return tf.split(leaky_routing, [1, output_dim], 2)[1]
 
 
