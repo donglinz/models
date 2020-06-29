@@ -176,6 +176,18 @@ def load_training(saver, session, load_dir):
     prev_step = 0
   return prev_step
 
+import ctypes
+
+_cudart = ctypes.CDLL('libcudart.so')
+def cu_prof_start():
+  ret = _cudart.cudaProfilerStart()
+  if ret != 0:
+    raise Exception('cudaProfilerStart() returned %d' % ret)
+
+def cu_prof_stop():
+  ret = _cudart.cudaProfilerStop()
+  if ret != 0:
+    raise Exception('cudaProfilerStop() returned %d' % ret)
 
 def train_experiment(session, result, writer, last_step, max_steps, saver,
                      summary_dir, save_step):
@@ -196,6 +208,25 @@ def train_experiment(session, result, writer, last_step, max_steps, saver,
     step += 1
     summary, _ = session.run([result.summary, result.train_op])
     writer.add_summary(summary, i)
+    # if step == 20:
+    #   run_metadata = tf.RunMetadata()
+    #   _ = session.run([result.train_op],options=tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE),
+    #            run_metadata=run_metadata)
+    #   ProfileOptionBuilder = tf.profiler.ProfileOptionBuilder
+    #   opts = ProfileOptionBuilder.time_and_memory()
+    #   #opts = ProfileOptionBuilder(opts).with_timeline_output("out_code.json").build()
+    #   tf.profiler.profile(
+    #         tf.get_default_graph(),
+    #         run_meta=run_metadata,
+    #         cmd='op',
+    #         options=opts)
+    #   # tf.profiler.profile(
+    #   #       tf.get_default_graph(),
+    #   #       run_meta=run_metadata,
+    #   #       cmd='scope',
+    #   #       options=ProfileOptionBuilder(opts).with_timeline_output("out_scope.json").build())
+    #   break
+    # _ = session.run([result.train_op])
     if (i + 1) % save_step == 0:
       saver.save(
           session, os.path.join(summary_dir, 'model.ckpt'), global_step=i + 1)

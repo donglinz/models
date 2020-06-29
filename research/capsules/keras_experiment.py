@@ -68,8 +68,8 @@ class Hparams():
 
 def keras_train(hparams):
   num_classes = 10
-  epochs = 1
-  batch_size = 50
+  epochs = 2
+  batch_size = 200
   #model = keras_models.capsule_model.CapsuleModel(hparams, num_classes, batch_size)
   model = tf.keras.models.Sequential([
     tf.keras.layers.Conv2D(
@@ -108,16 +108,15 @@ def keras_train(hparams):
   # Create a TensorBoard callback
   logs = "logs/" + datetime.now().strftime("%Y%m%d-%H%M%S")
 
-  tboard_callback = tf.keras.callbacks.TensorBoard(log_dir = logs,
-                                                  histogram_freq = 1,
-                                                  profile_batch = '100,110')
+  # tboard_callback = tf.keras.callbacks.TensorBoard(log_dir = logs,
+  #                                                 histogram_freq = 1,
+  #                                                 profile_batch = '100,110')
   model.summary()
   model.fit(train,
           epochs=epochs,
           validation_data=test,
           steps_per_epoch=50000/batch_size,
-          validation_steps=10000/batch_size,
-          callbacks = [tboard_callback])
+          validation_steps=10000/batch_size)
 
 
 
