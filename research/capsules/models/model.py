@@ -39,7 +39,7 @@ TowerResult = collections.namedtuple('TowerResult', ('inferred', 'almost',
 JoinedResult = collections.namedtuple('JoinedResult', ('summary', 'train_op',
                                                        'correct', 'almost'))
 Inferred = collections.namedtuple('Inferred',
-                                  ('logits', 'remakes'))
+                                  ('logits', 'remakes', 'logits_update'))
 
 
 class Model(object):
@@ -126,7 +126,10 @@ class Model(object):
     """
     average_grads = []
     for grads_and_vars in zip(*tower_grads):
-      grads = tf.stack([g for g, _ in grads_and_vars])
+      grads = [g for g, _ in grads_and_vars]
+      if grads[0] == None:
+        continue
+      grads = tf.stack(grads)
       grad = tf.reduce_mean(grads, 0)
 
       v = grads_and_vars[0][1]

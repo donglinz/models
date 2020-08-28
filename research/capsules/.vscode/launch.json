@@ -15,7 +15,7 @@
                 "--dataset=cifar10",
                 "--hparams_override=num_prime_capsules=64,padding=SAME,leaky=true,remake=false,routing=3,verbose=True",
                 "--summary_dir=summary/",
-                "--checkpoint=/home/donglinz/workspace/models/research/capsules/summary/cifarcheckpoint/model.ckpt-760000"],
+                "--checkpoint=/home/donglinz/models/research/capsules/summary/train/model.ckpt-120000"],
                 "env": {
                     "CUDA_VISIBLE_DEVICES": "1"
                 }
@@ -30,6 +30,7 @@
                 "--dataset=cifar10",
                 "--max_steps=600000",
                 "--hparams_override=num_prime_capsules=64,padding=SAME,leaky=true,remake=false,verbose=True",
+                "--save_step=10000",
                 "--summary_dir=summary/"],
             "env": {
                 "CUDA_VISIBLE_DEVICES" : "0"

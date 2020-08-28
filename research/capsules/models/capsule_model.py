@@ -194,7 +194,7 @@ class CapsuleModel(model.Model):
     hidden1 = tf.expand_dims(relu1, 1)
 
     # Capsules
-    capsule_output = self._build_capsule(hidden1, features['num_classes'])
+    capsule_output, logits_update = self._build_capsule(hidden1, features['num_classes'])
     logits = tf.norm(capsule_output, axis=-1)
 
     # Reconstruction
@@ -203,4 +203,4 @@ class CapsuleModel(model.Model):
     else:
       remake = None
 
-    return model.Inferred(logits, remake)
+    return model.Inferred(logits, remake, logits_update)

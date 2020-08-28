@@ -101,13 +101,13 @@ def _update_routing(votes, biases, logit_shape, num_dims, input_dim, output_dim,
     r_t_shape += [i + 4]
   votes_trans = tf.transpose(votes, votes_t_shape)
 
-  def _body(i, logits, activations):
+  def _body(i, logits, logits_init, activations):
     """Routing while loop."""
     # route: [batch, input_dim, output_dim, ...]
     if leaky:
-      route = _leaky_routing(logits, output_dim)
+      route = _leaky_routing(logits + logits_init, output_dim)
     else:
-      route = tf.nn.softmax(logits, dim=2)
+      route = tf.nn.softmax(logits + logits_init , dim=2)
     preactivate_unrolled = route * votes_trans
     preact_trans = tf.transpose(preactivate_unrolled, r_t_shape)
     preactivate = tf.reduce_sum(preact_trans, axis=1) + biases
@@ -120,19 +120,29 @@ def _update_routing(votes, biases, logit_shape, num_dims, input_dim, output_dim,
     act_replicated = tf.tile(act_3d, tile_shape)
     distances = tf.reduce_sum(votes * act_replicated, axis=3)
     logits += distances
-    return (i + 1, logits, activations)
+    return (i + 1, logits, logits_init, activations)
 
   activations = tf.TensorArray(
       dtype=tf.float32, size=num_routing, clear_after_read=False)
   logits = tf.fill(logit_shape, 0.0)
+  with tf.variable_scope('logits_init'):
+    logits_init = tf.get_variable("routing_logits", logit_shape[1:], initializer = tf.zeros_initializer)
+  logits_init_no_gradient = tf.stop_gradient(logits_init)
+  logits_init_no_gradient = tf.expand_dims(logits_init_no_gradient, axis=0)
+  logits_init_no_gradient = tf.tile(logits_init_no_gradient, [logit_shape[0].value] + [1 for i in range(len(logit_shape) - 1)])
+  tf.summary.histogram("routing_logits_init", logits_init_no_gradient)
   i = tf.constant(0, dtype=tf.int32)
-  _, logits, activations = tf.while_loop(
-      lambda i, logits, activations: i < num_routing,
+  _, logits, _, activations = tf.while_loop(
+      lambda i, logits, logits_init_no_gradient, activations: i < num_routing,
       _body,
-      loop_vars=[i, logits, activations],
+      loop_vars=[i, logits, logits_init_no_gradient, activations],
       swap_memory=True)
 
-  return activations.read(num_routing - 1)
+  with tf.name_scope('update_logits'):
+    logits = tf.reduce_mean(logits, axis=0, keepdims=False)
+    logits_init_update = logits_init.assign(logits_init * 0.99 + logits * 0.01)
+
+  return activations.read(num_routing - 1), logits_init_update
 
 
 def capsule(input_tensor,
@@ -186,9 +196,9 @@ def capsule(input_tensor,
       votes_reshaped = tf.reshape(votes,
                                   [-1, input_dim, output_dim, output_atoms])
     with tf.name_scope('routing'):
-      input_shape = tf.shape(input_tensor)
-      logit_shape = tf.stack([input_shape[0], input_dim, output_dim])
-      activations = _update_routing(
+      input_shape = input_tensor.shape
+      logit_shape = [input_shape[0], input_dim, output_dim]
+      activations, logits_update = _update_routing(
           votes=votes_reshaped,
           biases=biases,
           logit_shape=logit_shape,
@@ -196,7 +206,7 @@ def capsule(input_tensor,
           input_dim=input_dim,
           output_dim=output_dim,
           **routing_args)
-    return activations
+    return activations, logits_update
 
 
 def _depthwise_conv3d(input_tensor,
@@ -235,7 +245,7 @@ def _depthwise_conv3d(input_tensor,
       tf.nn.conv2d.
   """
   with tf.name_scope('conv'):
-    input_shape = tf.shape(input_tensor)
+    input_shape = input_tensor.shape
     _, _, _, in_height, in_width = input_tensor.get_shape()
     # Reshape input_tensor to 4D by merging first two dimmensions.
     # tf.nn.conv2d only accepts 4D tensors.
@@ -251,7 +261,7 @@ def _depthwise_conv3d(input_tensor,
         [1, 1, stride, stride],
         padding=padding,
         data_format='NCHW')
-    conv_shape = tf.shape(conv)
+    conv_shape = conv.shape
     _, _, conv_height, conv_width = conv.get_shape()
     # Reshape back to 6D by splitting first dimmension to batch and input_dim
     # and splitting second dimmension to output_dim and output_atoms.
@@ -322,12 +332,12 @@ def conv_slim_capsule(input_tensor,
         stride, padding)
 
     with tf.name_scope('routing'):
-      logit_shape = tf.stack([
+      logit_shape = [
           input_shape[0], input_dim, output_dim, votes_shape[2], votes_shape[3]
-      ])
+      ]
       biases_replicated = tf.tile(biases,
                                   [1, 1, votes_shape[2], votes_shape[3]])
-      activations = _update_routing(
+      activations, _ = _update_routing(
           votes=votes,
           biases=biases_replicated,
           logit_shape=logit_shape,

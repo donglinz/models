@@ -191,7 +191,7 @@ def cu_prof_stop():
     raise Exception('cudaProfilerStop() returned %d' % ret)
 
 def train_experiment(session, result, writer, last_step, max_steps, saver,
-                     summary_dir, save_step):
+                     summary_dir, save_step, inferred):
   """Runs training for up to max_steps and saves the model and summaries.
 
   Args:
@@ -207,27 +207,12 @@ def train_experiment(session, result, writer, last_step, max_steps, saver,
   step = 0
   for i in range(last_step, max_steps):
     step += 1
-    summary, _ = session.run([result.summary, result.train_op])
-    writer.add_summary(summary, i)
-    # if step == 20:
-    #   run_metadata = tf.RunMetadata()
-    #   _ = session.run([result.train_op],options=tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE),
-    #            run_metadata=run_metadata)
-    #   ProfileOptionBuilder = tf.profiler.ProfileOptionBuilder
-    #   opts = ProfileOptionBuilder.time_and_memory()
-    #   #opts = ProfileOptionBuilder(opts).with_timeline_output("out_code.json").build()
-    #   tf.profiler.profile(
-    #         tf.get_default_graph(),
-    #         run_meta=run_metadata,
-    #         cmd='op',
-    #         options=opts)
-    #   # tf.profiler.profile(
-    #   #       tf.get_default_graph(),
-    #   #       run_meta=run_metadata,
-    #   #       cmd='scope',
-    #   #       options=ProfileOptionBuilder(opts).with_timeline_output("out_scope.json").build())
-    #   break
-    # _ = session.run([result.train_op])
+    if step % 30 == 0:
+      summary, _, _ = session.run([result.summary, result.train_op, inferred[0].logits_update])
+      writer.add_summary(summary, i)
+    else:
+      session.run([result.train_op, inferred[0].logits_update])
+
     if (i + 1) % save_step == 0:
       saver.save(
           session, os.path.join(summary_dir, 'model.ckpt'), global_step=i + 1)
@@ -293,6 +278,7 @@ def run_experiment(loader,
                    experiment,
                    result,
                    max_steps,
+                   inferred,
                    save_step=0):
   """Starts a session, loads the model and runs the given experiment on it.
 
@@ -332,7 +318,8 @@ def run_experiment(loader,
         max_steps=max_steps,
         saver=saver,
         summary_dir=load_dir,
-        save_step=save_step)
+        save_step=save_step,
+        inferred=inferred)
   except tf.errors.OutOfRangeError:
     tf.logging.info('Finished experiment.')
   finally:
@@ -369,7 +356,7 @@ def train(hparams, summary_dir, num_gpus, model_type, max_steps, save_step,
     features = get_features('train', 128, num_gpus, data_dir, num_targets,
                             dataset, validate)
     model = models[model_type](hparams)
-    result, _ = model.multi_gpu(features, num_gpus)
+    result, inferred = model.multi_gpu(features, num_gpus)
     # Print stats
     param_stats = tf.contrib.tfprof.model_analyzer.print_model_analysis(
         tf.get_default_graph(),
@@ -378,7 +365,7 @@ def train(hparams, summary_dir, num_gpus, model_type, max_steps, save_step,
     sys.stdout.write('total_params: %d\n' % param_stats.total_parameters)
     writer = tf.summary.FileWriter(summary_dir)
     run_experiment(load_training, summary_dir, writer, train_experiment, result,
-                   max_steps, save_step)
+                   max_steps, inferred, save_step)
     writer.close()
 
 
@@ -446,8 +433,8 @@ def evaluate(hparams, summary_dir, num_gpus, model_type, eval_size, data_dir,
       else:
         paused = 0
         seen_step = step
-        run_experiment(load_eval, last_checkpoint, test_writer, eval_experiment,
-                       result, eval_size // 100)
+        run_experiment(load_eval, last_checkpoint, test_writer, eval_experiment, 
+                       result, eval_size // 100, None)
         if checkpoint:
           break
 
