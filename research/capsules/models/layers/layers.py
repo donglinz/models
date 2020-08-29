@@ -27,7 +27,7 @@ import numpy as np
 import tensorflow as tf
 
 from models.layers import variables
-
+from models.sparsemax import sparsemax
 
 def _squash(input_tensor):
   """Applies norm nonlinearity (squash) to a capsule layer.

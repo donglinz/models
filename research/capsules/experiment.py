@@ -353,7 +353,7 @@ def train(hparams, summary_dir, num_gpus, model_type, max_steps, save_step,
   summary_dir += '/train/'
   with tf.Graph().as_default():
     # Build model
-    features = get_features('train', 128, num_gpus, data_dir, num_targets,
+    features = get_features('train', 64, num_gpus, data_dir, num_targets,
                             dataset, validate)
     model = models[model_type](hparams)
     result, inferred = model.multi_gpu(features, num_gpus)
