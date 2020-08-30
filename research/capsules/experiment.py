@@ -104,14 +104,14 @@ def get_features(split, total_batch_size, num_gpus, data_dir, num_targets,
             ))
       elif dataset == 'affnist':
         if split == 'train':
-          features.append(
-            mnist_input_record.inputs(
-                data_dir=data_dir,
-                batch_size=batch_size,
-                split=split,
-                num_targets=num_targets,
-                height=40,
-            ))
+          # features.append(
+          #   mnist_input_record.inputs(
+          #       data_dir=data_dir,
+          #       batch_size=batch_size,
+          #       split=split,
+          #       num_targets=num_targets,
+          #       height=40,
+          #   ))
         elif split == 'test':
           features.append(
               affnist_input.read_affnist(split=split, batch_size=batch_size, path=data_dir)
