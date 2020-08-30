@@ -104,6 +104,7 @@ def get_features(split, total_batch_size, num_gpus, data_dir, num_targets,
             ))
       elif dataset == 'affnist':
         if split == 'train':
+          pass
           # features.append(
           #   mnist_input_record.inputs(
           #       data_dir=data_dir,
