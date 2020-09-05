@@ -31,6 +31,7 @@ from input_data.cifar10 import cifar10_input
 from input_data.mnist import mnist_input_record
 from input_data.affnist import affnist_input
 from input_data.norb import norb_input_record
+from input_data.svhn import svhn_input_record
 from models import capsule_model
 from models import conv_model
 
@@ -47,7 +48,7 @@ tf.flags.DEFINE_string('model', 'capsule',
                        'capsule or baseline')
 tf.flags.DEFINE_string('dataset', 'mnist',
                        'The dataset to use for the experiment.'
-                       'mnist, norb, cifar10.')
+                       'mnist, norb, cifar10, affnist, svhn.')
 tf.flags.DEFINE_integer('num_gpus', 1, 'Number of gpus to use.')
 tf.flags.DEFINE_integer('num_targets', 1,
                         'Number of targets to detect (1 or 2).')
@@ -103,25 +104,22 @@ def get_features(split, total_batch_size, num_gpus, data_dir, num_targets,
                 validate=validate,
             ))
       elif dataset == 'affnist':
-        if split == 'train':
-          pass
-          # features.append(
-          #   mnist_input_record.inputs(
-          #       data_dir=data_dir,
-          #       batch_size=batch_size,
-          #       split=split,
-          #       num_targets=num_targets,
-          #       height=40,
-          #   ))
-        elif split == 'test':
-          features.append(
-              affnist_input.read_affnist(split=split, batch_size=batch_size, path=data_dir)
-          )
+        features.append(
+          affnist_input.inputs(
+              data_dir=data_dir,
+              batch_size=batch_size,
+              split=split,
+              height=40,
+          ))
       elif dataset == 'norb':
         features.append(
-            norb_input_record.inputs(
-                data_dir=data_dir, batch_size=batch_size, split=split,
-            ))
+          norb_input_record.inputs(
+              data_dir=data_dir, batch_size=batch_size, split=split,
+          ))
+      elif dataset == 'svhn':
+        features.append(
+          svhn_input_record.inputs(data_dir=data_dir, batch_size=batch_size, split=split)
+        )
       elif dataset == 'cifar10':
         data_dir = os.path.join(data_dir, 'cifar-10-batches-bin')
         features.append(
@@ -366,7 +364,7 @@ def train(hparams, summary_dir, num_gpus, model_type, max_steps, save_step,
   summary_dir += '/train/'
   with tf.Graph().as_default():
     # Build model
-    features = get_features('train', 128, num_gpus, data_dir, num_targets,
+    features = get_features('train', 100, num_gpus, data_dir, num_targets,
                             dataset, validate)
     model = models[model_type](hparams)
     result, _ = model.multi_gpu(features, num_gpus)
@@ -589,7 +587,10 @@ def default_hparams():
       leaky=False,
       learning_rate=0.001,
       loss_type='margin',
+      conv1_channel=256,
       num_prime_capsules=32,
+      prime_capsule_dim=8,
+      digit_capsule_dim=16,
       padding='VALID',
       remake=True,
       routing=3,

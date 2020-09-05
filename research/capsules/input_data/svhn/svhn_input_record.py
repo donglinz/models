@@ -29,7 +29,7 @@ import random
 import tensorflow as tf
 
 
-def _read_and_decode(filename_queue, image_dim=40, distort=False,
+def _read_and_decode(filename_queue, image_dim=32, distort=False,
                      split='train'):
   """Reads a single record and converts it to a tensor.
 
@@ -59,27 +59,11 @@ def _read_and_decode(filename_queue, image_dim=40, distort=False,
   # length image_pixel*image_pixel) to a uint8 tensor with shape
   # [image_pixel, image_pixel, 1].
   image = tf.decode_raw(features['image_raw'], tf.uint8)
-  image = tf.reshape(image, [image_dim, image_dim, 1])
-  image.set_shape([image_dim, image_dim, 1])
+  image = tf.reshape(image, [3, image_dim, image_dim])
+  image.set_shape([3, image_dim, image_dim])
 
   # Convert from [0, 255] -> [-0.5, 0.5] floats.
   image = tf.cast(image, tf.float32) * (1. / 255)
-  if distort:
-    cropped_dim = image_dim - 4
-    if split == 'train':
-      image = tf.reshape(image, [image_dim, image_dim])
-      image = tf.random_crop(image, [cropped_dim, cropped_dim])
-      # 0.26179938779 is 15 degress in radians
-      image = tf.contrib.image.rotate(image,
-                                      random.uniform(-0.26179938779,
-                                                     0.26179938779))
-      image = tf.reshape(image, [cropped_dim, cropped_dim, 1])
-      image.set_shape([cropped_dim, cropped_dim, 1])
-    else:
-      fraction = cropped_dim / image_dim
-      image = tf.image.central_crop(image, central_fraction=fraction)
-      image.set_shape([cropped_dim, cropped_dim, 1])
-    image_dim = cropped_dim
 
   # Convert label from a scalar uint8 tensor to an int32 scalar.
   label = tf.cast(features['label'], tf.int32)
@@ -94,7 +78,7 @@ def _read_and_decode(filename_queue, image_dim=40, distort=False,
 def inputs(data_dir,
            batch_size,
            split,
-           height=40,
+           height=32,
            distort=False,
            batch_capacity=5000,
            validate=False,
@@ -117,16 +101,12 @@ def inputs(data_dir,
 
   """
 
-  file_format = '{}_{}shifted_mnist.tfrecords'
-  if split == 'train':
-    shift = 6
-  else:
-    raise Exception('need affnist dataset')
-  filenames = [os.path.join(data_dir, file_format.format(split, shift))]
+  filenames = [os.path.join(data_dir, 'svhn_{}.tfrecords'.format(split))]
 
   with tf.name_scope('input'):
     filename_queue = tf.train.string_input_producer(
         filenames, shuffle=(split == 'train'))
+
 
     features, image_dim = _read_and_decode(
         filename_queue, image_dim=height, distort=distort, split=split)
@@ -145,7 +125,7 @@ def inputs(data_dir,
           num_threads=1,
           capacity=batch_capacity + 3 * batch_size)
     batched_features['height'] = image_dim
-    batched_features['depth'] = 1
+    batched_features['depth'] = 3
     batched_features['num_targets'] = 1
     batched_features['num_classes'] = 10
     return batched_features

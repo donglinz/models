@@ -57,7 +57,7 @@ def _read_and_decode(filename_queue, image_dim=48, distort=False,
           'height': tf.FixedLenFeature([], tf.int64),
           'width': tf.FixedLenFeature([], tf.int64),
           'depth': tf.FixedLenFeature([], tf.int64),
-          'meta': tf.FixedLenFeature([4], tf.int64),
+          # 'meta': tf.FixedLenFeature([4], tf.int64),
       })
 
   image = tf.decode_raw(features['image_raw'], tf.uint8)

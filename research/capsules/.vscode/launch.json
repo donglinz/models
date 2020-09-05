@@ -41,12 +41,12 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["--data_dir=/home/donglinz/models/research/capsules/testdata/norb/",
+            "args": ["--data_dir=/home/donglinz/datasets/norb/",
                 "--dataset=norb",
                 "--max_steps=300000",
                 "--summary_dir=summary/"],
             "env": {
-                "CUDA_VISIBLE_DEVICES": "1"
+                "CUDA_VISIBLE_DEVICES": "0"
             }
         },
         {
@@ -79,12 +79,55 @@
             }
         },
         {
-            "name": "affnist training",
+            "name": "mnist inference",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": ["--data_dir=/home/donglinz/datasets/mnist_data",
+                "--train=false",
+                "--checkpoint=/home/donglinz/models/research/capsules/summary/train/model.ckpt-1500",
+                "--summary_dir=summary/"],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "1"
+            }
+        },
+        {
+            "name": "svhn training",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": ["--data_dir=/home/donglinz/datasets/svhn",
+                "--dataset=svhn",
+                "--hparams_override=conv1_channel=64,num_prime_capsules=16,prime_capsule_dim=6,digit_capsule_dim=8",
+                "--max_steps=300000",
+                "--summary_dir=summary/"],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0"
+            }
+        },
+        {
+            "name": "svhn inference",
             "type": "python",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
             "args": ["--data_dir=/home/donglinz/datasets/mnist_random_placed",
+                "--dataset=svhn",
+                "--max_steps=300000",
+                "--summary_dir=summary/"],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "0"
+            }
+        },
+        {
+            "name": "affnist training",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": ["--data_dir=/home/donglinz/datasets/mnist_bin",
                 "--dataset=affnist",
                 "--max_steps=300000",
                 "--summary_dir=summary/"],
@@ -108,15 +151,13 @@
             }
         },
         {
-            "name": "mnist inference",
+            "name": "norb shift",
             "type": "python",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["--data_dir=/home/donglinz/datasets/mnist_data",
-                "--train=false",
-                "--checkpoint=/home/donglinz/models/research/capsules/summary/train/model.ckpt-1500",
-                "--summary_dir=summary/"],
+            "args": ["--data_dir=/home/donglinz/datasets/norb/",
+                "--split=train"],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "1"
             }

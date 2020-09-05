@@ -57,15 +57,15 @@ class CapsuleModel(model.Model):
         output_dim=self._hparams.num_prime_capsules,
         layer_name='conv_capsule1',
         num_routing=1,
-        input_atoms=256,
-        output_atoms=8,
+        input_atoms=self._hparams.conv1_channel,
+        output_atoms=self._hparams.prime_capsule_dim,
         stride=2,
         kernel_size=9,
         padding=self._hparams.padding,
         leaky=self._hparams.leaky,)
     capsule1_atom_last = tf.transpose(capsule1, [0, 1, 3, 4, 2])
     capsule1_3d = tf.reshape(capsule1_atom_last,
-                             [tf.shape(input_tensor)[0], -1, 8])
+                             [tf.shape(input_tensor)[0], -1, self._hparams.prime_capsule_dim])
     _, _, _, height, width = capsule1.get_shape()
     input_dim = self._hparams.num_prime_capsules * height.value * width.value
     return layers.capsule(
@@ -73,8 +73,8 @@ class CapsuleModel(model.Model):
         input_dim=input_dim,
         output_dim=num_classes,
         layer_name='capsule2',
-        input_atoms=8,
-        output_atoms=16,
+        input_atoms=self._hparams.prime_capsule_dim,
+        output_atoms=self._hparams.digit_capsule_dim,
         num_routing=self._hparams.routing,
         leaky=self._hparams.leaky,)
 
@@ -143,7 +143,7 @@ class CapsuleModel(model.Model):
         remakes.append(
             layers.reconstruction(
                 capsule_mask=tf.one_hot(label, features['num_classes']),
-                num_atoms=16,
+                num_atoms=self._hparams.digit_capsule_dim,
                 capsule_embedding=capsule_embedding,
                 layer_sizes=[512, 1024],
                 num_pixels=num_pixels,
@@ -179,9 +179,9 @@ class CapsuleModel(model.Model):
     # ReLU Convolution
     with tf.variable_scope('conv1') as scope:
       kernel = variables.weight_variable(
-          shape=[9, 9, image_depth, 256], stddev=5e-2,
+          shape=[9, 9, image_depth, self._hparams.conv1_channel], stddev=5e-2,
           verbose=self._hparams.verbose)
-      biases = variables.bias_variable([256], verbose=self._hparams.verbose)
+      biases = variables.bias_variable([self._hparams.conv1_channel], verbose=self._hparams.verbose)
       conv1 = tf.nn.conv2d(
           image_4d,
           kernel, [1, 1, 1, 1],
