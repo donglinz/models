@@ -151,12 +151,12 @@
             }
         },
         {
-            "name": "norb shift",
+            "name": "data pre processing",
             "type": "python",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["--data_dir=/home/donglinz/datasets/norb/",
+            "args": ["--data_dir=/home/donglinz/datasets/affnist/",
                 "--split=train"],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "1"
