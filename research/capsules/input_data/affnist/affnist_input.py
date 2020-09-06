@@ -117,12 +117,13 @@ def inputs(data_dir,
 
   """
 
-  file_format = '{}_{}shifted_mnist.tfrecords'
+  
   if split == 'train':
     shift = 6
+    file_format = '{}_{}shifted_mnist.tfrecords'.format(split, shift)
   else:
-    raise Exception('need affnist dataset')
-  filenames = [os.path.join(data_dir, file_format.format(split, shift))]
+    file_format = 'affnist_test.tfrecords'
+  filenames = [os.path.join(data_dir, file_format)]
 
   with tf.name_scope('input'):
     filename_queue = tf.train.string_input_producer(
