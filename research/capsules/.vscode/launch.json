@@ -87,7 +87,7 @@
             "args": ["--data_dir=/home/donglinz/datasets/mnist_data",
                 "--train=false",
                 "--checkpoint=/home/donglinz/models/research/capsules/summary/train/model.ckpt-1500",
-                "--summary_dir=summary/"],
+                "--summary_dir=summary/mnist/"],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "1"
             }
@@ -113,12 +113,14 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["--data_dir=/home/donglinz/datasets/mnist_random_placed",
+            "args": ["--data_dir=/home/donglinz/datasets/svhn",
+                "--train=false",
                 "--dataset=svhn",
-                "--max_steps=300000",
-                "--summary_dir=summary/"],
+                "--checkpoint=/home/donglinz/models/research/capsules/summary/train/model.ckpt-1500",
+                "--hparams_override=conv1_channel=64,num_prime_capsules=16,prime_capsule_dim=6,digit_capsule_dim=8",
+                "--summary_dir=summary/svhn/"],
             "env": {
-                "CUDA_VISIBLE_DEVICES": "0"
+                "CUDA_VISIBLE_DEVICES": "1"
             }
         },
         {

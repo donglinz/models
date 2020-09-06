@@ -283,7 +283,8 @@ def eval_experiment(session, result, writer, last_step, max_steps, **kwargs):
   tf.logging.info('Total wrong predictions: {}, wrong percent: {}%'.format(
       total_false, total_false / max_steps))
   writer.add_summary(summary, last_step)
-
+  with open('{}_result.json'.format(FLAGS.dataset), 'a') as f:
+    f.write('{} {}\n'.format(last_step, total_false / max_steps))
 
 def run_experiment(loader,
                    load_dir,
