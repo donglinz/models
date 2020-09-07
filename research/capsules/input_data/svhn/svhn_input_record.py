@@ -67,6 +67,7 @@ def _read_and_decode(filename_queue, image_dim=32, distort=False,
 
   # Convert label from a scalar uint8 tensor to an int32 scalar.
   label = tf.cast(features['label'], tf.int32)
+  label = tf.cond(tf.math.equal(label, tf.constant(10)), lambda: tf.add(label, -10), lambda: label)
   features = {
       'images': image,
       'labels': tf.one_hot(label, 10),
