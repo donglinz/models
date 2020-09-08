@@ -13,7 +13,7 @@ tf.flags.DEFINE_string(
 
 NORB_FILES = {
     'train': ('smallnorb-5x46789x9x18x6x2x96x96-training-dat.mat', 'smallnorb-5x46789x9x18x6x2x96x96-training-cat.mat'),
-    'test': ('smallnorb-5x46789x9x18x6x2x96x96-training-dat.mat', 'smallnorb-5x01235x9x18x6x2x96x96-testing-cat.mat')
+    'test': ('smallnorb-5x01235x9x18x6x2x96x96-testing-dat.mat', 'smallnorb-5x01235x9x18x6x2x96x96-testing-cat.mat')
 }
 
 NORB_RANGE = {
@@ -32,10 +32,10 @@ def bytes_feature(value):
   """Casts value to a TensorFlow bytes feature list."""
   return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
-def read_file(file_bytes, header_byte_size, data_size):
+def read_file(file_bytes, header_byte_size, data_size,dtype=np.uint8):
   """Discards 4 * header_byte_size of file_bytes and returns data_size bytes."""
   file_bytes.read(4 * header_byte_size)
-  return np.frombuffer(file_bytes.read(data_size), dtype=np.uint8)
+  return np.frombuffer(file_bytes.read(data_size), dtype=dtype)
 
 def read_byte_data(data_dir, split):
   """Extracts images and labels from MNIST binary file.
@@ -61,7 +61,7 @@ def read_byte_data(data_dir, split):
     images = read_file(f, 6, end * 2 * IMAGE_SIZE_PX * IMAGE_SIZE_PX)
     images = images.reshape(end, 2, IMAGE_SIZE_PX, IMAGE_SIZE_PX)
   with open(label_file, 'rb') as f:
-    labels = read_file(f, 5, end)
+    labels = read_file(f, 5, end*4, dtype=np.uint32)
 
   return zip(images[start:], labels[start:])
 

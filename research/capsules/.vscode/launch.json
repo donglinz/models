@@ -55,12 +55,13 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["--data_dir=/home/donglinz/models/research/capsules/testdata/norb/",
+            "args": ["--data_dir=/home/donglinz/datasets/norb",
                 "--train=false",
                 "--eval_size=24300",
                 "--dataset=norb",
                 "--summary_dir=summary/",
-                "--checkpoint=/home/donglinz/models/research/capsules/summary/train/model.ckpt-1500"],
+                "--hparams_override=remake=false",
+                "--checkpoint=/home/donglinz/models/research/capsules/summary/norbnoremake/train/model.ckpt-59000"],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "1"
             }
@@ -158,7 +159,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["--data_dir=/home/donglinz/datasets/affnist/",
+            "args": ["--data_dir=/home/donglinz/datasets/norb/",
                 "--split=train"],
             "env": {
                 "CUDA_VISIBLE_DEVICES": "1"
