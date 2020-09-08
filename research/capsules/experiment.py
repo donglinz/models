@@ -559,8 +559,9 @@ def evaluate_ensemble(hparams, model_type, eval_size, data_dir, num_targets,
     features = get_features('test', batch_size, 1, data_dir, num_targets,
                             dataset)[0]
     model = models[model_type](hparams)
-
-    session = tf.Session(config=tf.ConfigProto(allow_soft_placement=True))
+    sess_config = tf.ConfigProto(allow_soft_placement=True)
+    sess_config.gpu_options.allow_growth = True
+    session = tf.Session(config=sess_config)
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=session, coord=coord)
     num_steps = eval_size // batch_size
